@@ -295,34 +295,52 @@ class AdjectiveFormsChallenge {
     }
 
     endGame() {
-        this.gameActive = false;
-        clearInterval(this.interval);
-        console.log("EndGame Triggered!");
-        console.log("Wrong Answers Count:", this.wrongAnswers.length);
-        let storedBest = localStorage.getItem("bestScore") || 0;
-        let newHighScore = false;
-        if (this.score > storedBest) {
-            localStorage.setItem("bestScore", this.score);
-            newHighScore = true;
-        }
-        this.updateBestScoreDisplay();
-        let endMessage = `<div class="game-over">Time's Up!</div>
-                          <div>Your score: ${this.score}</div>`;
-        if (newHighScore) {
-            endMessage += `<div class="new-high">New High Score!</div>`;
-        }
-        document.getElementById("sentence").innerHTML = endMessage;
-        document.getElementById("answer").style.display = "none";
-        document.getElementById("review").style.display = this.wrongAnswers.length > 0 ? "block" : "none";
-        const reportButton = document.getElementById("downloadReport");
-        if (reportButton) {
-            reportButton.style.display = "block";
-            if (!reportButton.dataset.listenerAdded) {
-                reportButton.addEventListener("click", () => this.downloadReport());
-                reportButton.dataset.listenerAdded = "true";
-            }
+    this.gameActive = false;
+    clearInterval(this.interval);
+    console.log("EndGame Triggered!");
+    console.log("Wrong Answers Count:", this.wrongAnswers.length);
+
+    // 1) Check and update best score using localStorage
+    let storedBest = localStorage.getItem("bestScore") || 0;
+    let newHighScore = false;
+    if (this.score > storedBest) {
+        localStorage.setItem("bestScore", this.score);
+        newHighScore = true;
+    }
+    this.updateBestScoreDisplay(); // If you have a function that refreshes the Best Score display
+
+    // 2) Build a "Time's Up" message
+    let endMessage = `
+        <div class="game-over">Time's Up!</div>
+        <div>Your score: ${this.score}</div>
+    `;
+    if (newHighScore) {
+        endMessage += `<div class="new-high">New High Score!</div>`;
+    }
+
+    // 3) Replace the last sentence with the end message
+    document.getElementById("sentence").innerHTML = endMessage;
+
+    // 4) Hide the answer input box and optionally clear or hide the timer
+    document.getElementById("answer").style.display = "none";
+    document.getElementById("timer").textContent = ""; 
+    // or: document.getElementById("timer").style.display = "none";
+    document.getElementById("timer-bar").style.width = "0%";
+
+    // 5) Show the "Review Mistakes" button if there are mistakes
+    document.getElementById("review").style.display = 
+        this.wrongAnswers.length > 0 ? "block" : "none";
+
+    // 6) Show the "Download Report" button if you have it in your HTML
+    const reportButton = document.getElementById("downloadReport");
+    if (reportButton) {
+        reportButton.style.display = "block";
+        if (!reportButton.dataset.listenerAdded) {
+            reportButton.addEventListener("click", () => this.generateReport());
+            reportButton.dataset.listenerAdded = "true";
         }
     }
+}
 
     updateBestScoreDisplay() {
         let storedBest = localStorage.getItem("bestScore") || 0;
