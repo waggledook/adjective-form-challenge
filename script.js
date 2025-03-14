@@ -50,6 +50,9 @@ class AdjectiveFormsChallenge {
                     border: none;
                     outline: none;
                     text-align: center;
+                    display: block;
+                    margin: 10px auto;
+                    width: 80%;
                 }
                 input.correct {
                     border: 2px solid #00FF00;
@@ -97,6 +100,18 @@ class AdjectiveFormsChallenge {
                     color: #FFD700;
                     margin-left: 10px;
                 }
+                /* Style for game over overlay */
+                .game-over {
+                    font-size: 24px;
+                    color: #FF4500;
+                    font-weight: bold;
+                    margin-bottom: 10px;
+                }
+                .new-high {
+                    font-size: 20px;
+                    color: #FFD700;
+                    font-weight: bold;
+                }
             </style>
             <div id="game-container">
                 <h1>Adjective Forms Challenge</h1>
@@ -106,6 +121,7 @@ class AdjectiveFormsChallenge {
                 <input type="text" id="answer" autofocus>
                 <p id="feedback"></p>
                 <p>Score: <span id="score">0</span></p>
+                <p>Best Score: <span id="bestScore">0</span></p>
                 <button id="start">Start Game</button>
                 <button id="restart">Restart</button>
                 <button id="review">Review Mistakes</button>
@@ -117,6 +133,7 @@ class AdjectiveFormsChallenge {
         document.getElementById("restart").addEventListener("click", () => this.restartGame());
         document.getElementById("review").addEventListener("click", () => this.startReview());
         this.setupInputListener();
+        this.updateBestScoreDisplay();
     }
 
     setupInputListener() {
@@ -143,6 +160,7 @@ class AdjectiveFormsChallenge {
         document.getElementById("feedback").textContent = "";
         document.getElementById("timer-bar").style.width = "100%";
         document.getElementById("answer").value = "";
+        document.getElementById("answer").style.display = "block";
         document.getElementById("answer").focus();
         this.updateSentence();
         this.startTimer();
@@ -151,7 +169,7 @@ class AdjectiveFormsChallenge {
     updateSentence() {
         if (this.currentIndex < this.sentences.length) {
             const current = this.sentences[this.currentIndex];
-            document.getElementById("sentence").innerHTML = current.sentence + 
+            document.getElementById("sentence").innerHTML = current.sentence +
                 " <span class='root-word'>(" + current.root + ")</span>";
             document.getElementById("answer").value = "";
         } else {
@@ -167,47 +185,48 @@ class AdjectiveFormsChallenge {
         const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
         const correctAnswer = currentSet[this.currentIndex].answer;
 
-        if (userInput === correctAnswer) {
-            if (!this.reviewMode) {
-                this.score += 5;
-                document.getElementById("score").textContent = this.score;
-            }
-            input.classList.add("correct");
-        } else {
-            if (!this.reviewMode) {
-                this.score -= 1;
-                document.getElementById("score").textContent = this.score;
-            }
-            input.classList.add("incorrect");
-            document.getElementById("feedback").textContent = `Incorrect: Correct answer is '${correctAnswer}'`;
-
-            if (!this.reviewMode) {
-                // Save wrong answer along with the root word
-                this.wrongAnswers.push({
-                    sentence: currentSet[this.currentIndex].sentence,
-                    answer: currentSet[this.currentIndex].answer,
-                    root: currentSet[this.currentIndex].root,
-                    userAnswer: userInput || "(no answer)"
-                });
-            }
-        }
-
         if (this.reviewMode) {
+            // Review mode logic remains unchanged
+            if (userInput === correctAnswer) {
+                input.classList.add("correct");
+            } else {
+                input.classList.add("incorrect");
+            }
             setTimeout(() => {
                 input.classList.remove("correct", "incorrect");
                 this.currentIndex++;
                 this.showReviewSentence();
             }, 1000);
         } else {
-            this.currentIndex++;
-            if (userInput !== correctAnswer) {
+            // Main game mode
+            if (userInput === correctAnswer) {
+                this.score += 5;
+                document.getElementById("score").textContent = this.score;
+                input.classList.add("correct");
+                // Shorter delay (500ms) and no "Correct!" text message
                 setTimeout(() => {
-                    input.classList.remove("correct", "incorrect");
+                    input.classList.remove("correct");
+                    this.currentIndex++;
+                    this.updateSentence();
+                }, 500);
+            } else {
+                this.score -= 1;
+                document.getElementById("score").textContent = this.score;
+                input.classList.add("incorrect");
+                document.getElementById("feedback").textContent = `Incorrect: Correct answer is '${correctAnswer}'`;
+                // Save wrong answer for review mode
+                this.wrongAnswers.push({
+                    sentence: currentSet[this.currentIndex].sentence,
+                    answer: currentSet[this.currentIndex].answer,
+                    root: currentSet[this.currentIndex].root,
+                    userAnswer: userInput || "(no answer)"
+                });
+                setTimeout(() => {
+                    input.classList.remove("incorrect");
+                    document.getElementById("feedback").textContent = "";
+                    this.currentIndex++;
                     this.updateSentence();
                 }, 1000);
-            } else {
-                input.classList.remove("correct", "incorrect");
-                this.updateSentence();
             }
         }
     }
@@ -231,35 +250,56 @@ class AdjectiveFormsChallenge {
         console.log("EndGame Triggered!");
         console.log("Wrong Answers Count:", this.wrongAnswers.length);
 
+        // Check and update best score using localStorage
+        let storedBest = localStorage.getItem("bestScore") || 0;
+        let newHighScore = false;
+        if (this.score > storedBest) {
+            localStorage.setItem("bestScore", this.score);
+            newHighScore = true;
+        }
+        this.updateBestScoreDisplay();
+
+        // Display game over overlay with final score and high score announcement if applicable
+        let endMessage = `<div class="game-over">Time's Up!</div>
+                          <div>Your score: ${this.score}</div>`;
+        if (newHighScore) {
+            endMessage += `<div class="new-high">New High Score!</div>`;
+        }
+        document.getElementById("sentence").innerHTML = endMessage;
+        // Hide the answer input since the game is over
+        document.getElementById("answer").style.display = "none";
+
+        // Show review button if there are mistakes, and download report button
         document.getElementById("review").style.display = this.wrongAnswers.length > 0 ? "block" : "none";
-
         const reportButton = document.getElementById("downloadReport");
-        if (!reportButton) {
-            console.error("ERROR: Download Report button is missing!");
-            return;
+        if (reportButton) {
+            reportButton.style.display = "block";
+            if (!reportButton.dataset.listenerAdded) {
+                reportButton.addEventListener("click", () => this.generateReport());
+                reportButton.dataset.listenerAdded = "true";
+            }
         }
+    }
 
-        console.log("Showing Report Button");
-        reportButton.style.display = "block";
-
-        if (!reportButton.dataset.listenerAdded) {
-            reportButton.addEventListener("click", () => this.generateReport());
-            reportButton.dataset.listenerAdded = "true";
-            console.log("Report Button Click Event Added!");
-        }
+    updateBestScoreDisplay() {
+        let storedBest = localStorage.getItem("bestScore") || 0;
+        document.getElementById("bestScore").textContent = storedBest;
     }
 
     startReview() {
         if (this.wrongAnswers.length === 0) return;
         this.reviewMode = true;
         this.currentIndex = 0;
+        // Show the answer input again for review mode
+        document.getElementById("answer").style.display = "block";
+        document.getElementById("answer").value = "";
         this.showReviewSentence();
     }
 
     showReviewSentence() {
         if (this.currentIndex < this.wrongAnswers.length) {
             const currentMistake = this.wrongAnswers[this.currentIndex];
-            document.getElementById("sentence").innerHTML = currentMistake.sentence + 
+            document.getElementById("sentence").innerHTML = currentMistake.sentence +
                 " <span class='root-word'>(" + currentMistake.root + ")</span>";
             document.getElementById("answer").value = "";
             document.getElementById("feedback").textContent = "";
