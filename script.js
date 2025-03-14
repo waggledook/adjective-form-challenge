@@ -18,7 +18,6 @@ class AdjectiveFormsChallenge {
 
     initUI() {
         console.log("Game script is running!");
-
         document.body.innerHTML = `
             <style>
                 body {
@@ -33,12 +32,52 @@ class AdjectiveFormsChallenge {
                     height: 100vh;
                     margin: 0;
                 }
+                /* Instructions Overlay */
+                #instructions-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.8);
+                    color: white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+                #instructions-box {
+                    background: #333;
+                    padding: 20px;
+                    border-radius: 10px;
+                    max-width: 500px;
+                    text-align: left;
+                }
+                #instructions-box h2 {
+                    margin-top: 0;
+                }
+                #close-instructions {
+                    margin-top: 15px;
+                    padding: 5px 10px;
+                    background: #28a745;
+                    border: none;
+                    border-radius: 5px;
+                    color: white;
+                    cursor: pointer;
+                    transition: 0.3s;
+                }
+                #close-instructions:hover {
+                    opacity: 0.8;
+                }
+                /* Game container styles */
                 #game-container {
                     background: rgba(0, 0, 0, 0.8);
                     padding: 20px;
                     border-radius: 10px;
                     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
                     text-align: center;
+                    z-index: 1;
+                    position: relative;
                 }
                 p {
                     font-size: 18px;
@@ -100,7 +139,7 @@ class AdjectiveFormsChallenge {
                     color: #FFD700;
                     margin-left: 10px;
                 }
-                /* Style for game over overlay */
+                /* Game over overlay styles */
                 .game-over {
                     font-size: 24px;
                     color: #FF4500;
@@ -113,6 +152,19 @@ class AdjectiveFormsChallenge {
                     font-weight: bold;
                 }
             </style>
+            <!-- Instructions Overlay -->
+            <div id="instructions-overlay">
+                <div id="instructions-box">
+                    <h2>How to Play</h2>
+                    <p>Welcome to the Adjective Forms Challenge!</p>
+                    <p>In this game, you will see sentences with a blank. Your task is to fill in the blank with the correct adjective form.</p>
+                    <p>Use the -ed or -ing form where possible, or provide the correct irregular adjective/verb form if needed.</p>
+                    <p>Try to answer as quickly and accurately as possible to earn more points.</p>
+                    <p>Good luck!</p>
+                    <button id="close-instructions">Got It!</button>
+                </div>
+            </div>
+            <!-- Game Container -->
             <div id="game-container">
                 <h1>Adjective Forms Challenge</h1>
                 <div id="timer-bar"></div>
@@ -129,6 +181,9 @@ class AdjectiveFormsChallenge {
             </div>
         `;
 
+        document.getElementById("close-instructions").addEventListener("click", () => {
+            document.getElementById("instructions-overlay").style.display = "none";
+        });
         document.getElementById("start").addEventListener("click", () => this.startGame());
         document.getElementById("restart").addEventListener("click", () => this.restartGame());
         document.getElementById("review").addEventListener("click", () => this.startReview());
@@ -179,14 +234,12 @@ class AdjectiveFormsChallenge {
 
     checkAnswer() {
         if (!this.gameActive && !this.reviewMode) return;
-
         const input = document.getElementById("answer");
         const userInput = input.value.trim().toLowerCase();
         const currentSet = this.reviewMode ? this.wrongAnswers : this.sentences;
         const correctAnswer = currentSet[this.currentIndex].answer;
 
         if (this.reviewMode) {
-            // Review mode logic remains unchanged
             if (userInput === correctAnswer) {
                 input.classList.add("correct");
             } else {
@@ -198,12 +251,10 @@ class AdjectiveFormsChallenge {
                 this.showReviewSentence();
             }, 1000);
         } else {
-            // Main game mode
             if (userInput === correctAnswer) {
                 this.score += 5;
                 document.getElementById("score").textContent = this.score;
                 input.classList.add("correct");
-                // Shorter delay (500ms) and no "Correct!" text message
                 setTimeout(() => {
                     input.classList.remove("correct");
                     this.currentIndex++;
@@ -214,7 +265,6 @@ class AdjectiveFormsChallenge {
                 document.getElementById("score").textContent = this.score;
                 input.classList.add("incorrect");
                 document.getElementById("feedback").textContent = `Incorrect: Correct answer is '${correctAnswer}'`;
-                // Save wrong answer for review mode
                 this.wrongAnswers.push({
                     sentence: currentSet[this.currentIndex].sentence,
                     answer: currentSet[this.currentIndex].answer,
@@ -249,8 +299,6 @@ class AdjectiveFormsChallenge {
         clearInterval(this.interval);
         console.log("EndGame Triggered!");
         console.log("Wrong Answers Count:", this.wrongAnswers.length);
-
-        // Check and update best score using localStorage
         let storedBest = localStorage.getItem("bestScore") || 0;
         let newHighScore = false;
         if (this.score > storedBest) {
@@ -258,24 +306,19 @@ class AdjectiveFormsChallenge {
             newHighScore = true;
         }
         this.updateBestScoreDisplay();
-
-        // Display game over overlay with final score and high score announcement if applicable
         let endMessage = `<div class="game-over">Time's Up!</div>
                           <div>Your score: ${this.score}</div>`;
         if (newHighScore) {
             endMessage += `<div class="new-high">New High Score!</div>`;
         }
         document.getElementById("sentence").innerHTML = endMessage;
-        // Hide the answer input since the game is over
         document.getElementById("answer").style.display = "none";
-
-        // Show review button if there are mistakes, and download report button
         document.getElementById("review").style.display = this.wrongAnswers.length > 0 ? "block" : "none";
         const reportButton = document.getElementById("downloadReport");
         if (reportButton) {
             reportButton.style.display = "block";
             if (!reportButton.dataset.listenerAdded) {
-                reportButton.addEventListener("click", () => this.generateReport());
+                reportButton.addEventListener("click", () => this.downloadReport());
                 reportButton.dataset.listenerAdded = "true";
             }
         }
@@ -290,7 +333,6 @@ class AdjectiveFormsChallenge {
         if (this.wrongAnswers.length === 0) return;
         this.reviewMode = true;
         this.currentIndex = 0;
-        // Show the answer input again for review mode
         document.getElementById("answer").style.display = "block";
         document.getElementById("answer").value = "";
         this.showReviewSentence();
@@ -316,45 +358,27 @@ class AdjectiveFormsChallenge {
         this.gameActive = false;
         this.reviewMode = false;
         clearInterval(this.interval);
-
         this.currentIndex = 0;
         this.score = 0;
         this.timer = 120;
         this.wrongAnswers = [];
         this.sentences = this.shuffle([...this.originalSentences]);
-
         document.getElementById("score").textContent = this.score;
         document.getElementById("feedback").textContent = "";
-        document.getElementById("sentence").innerHTML = "";
+        document.getElementById("sentence").textContent = "";
         document.getElementById("answer").value = "";
-        const inputBox = document.getElementById("answer");
-        inputBox.style.display = "block";
-        inputBox.style.width = "80%";
-        inputBox.style.margin = "10px auto";
-        inputBox.style.textAlign = "center";
-        inputBox.focus();
-        document.getElementById("timer").textContent = "Time left: 120s";
-        document.getElementById("timer-bar").style.width = "100%";
-
-        document.getElementById("review").style.display = "none";
         document.getElementById("restart").style.display = "none";
+        document.getElementById("review").style.display = "none";
         document.getElementById("start").style.display = "block";
     }
 
-    generateReport() {
-        if (this.wrongAnswers.length === 0) {
-            alert("No mistakes were made. Great job!");
-            return;
-        }
-
+    downloadReport() {
         let reportText = "Adjective Forms Challenge - Mistakes Report\n\n";
-
         this.wrongAnswers.forEach(mistake => {
             reportText += `You wrote: "${mistake.sentence.replace("____", mistake.userAnswer.toUpperCase())}"\n`;
             reportText += `The correct answer is: "${mistake.sentence.replace("____", mistake.answer.toUpperCase())}"\n`;
             reportText += `Root word: ${mistake.root}\n\n`;
         });
-
         const blob = new Blob([reportText], { type: "text/plain" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
